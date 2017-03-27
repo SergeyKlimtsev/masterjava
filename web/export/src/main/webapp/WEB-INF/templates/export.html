@@ -1,3 +1,4 @@
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Export XML</title>
@@ -9,8 +10,20 @@
         <input type="file" name="fileToUpload" id="fileToUpload"><br/>
     </p>
     <p>
+        Chunk size:<br>
+        <input type="number" name="chunkSize" id="chunkSize">
+    </p>
+    <p>
         <input type="submit" value="Upload" name="submit">
     </p>
 </form>
+<div th:if="${hasUploads}">
+    <p>Successful: <span th:text="${successful}">10</span>.</p>
+    <p>Errors: <span th:text="${errors}">20</span>.</p>
+    <div th:each="errorLocation : ${errorsLocations}">
+        <p th:text="${errorLocation}">error location</p>
+    </div>
+</div>
+<p><a href="users">All users</a></p>
 </body>
 </html>

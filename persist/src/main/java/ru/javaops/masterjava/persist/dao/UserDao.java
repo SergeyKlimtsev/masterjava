@@ -30,6 +30,9 @@ public abstract class UserDao implements AbstractDao {
     @GetGeneratedKeys
     abstract int insertGeneratedId(@BindBean User user);
 
+    @SqlBatch("INSERT INTO users (full_name, email, flag) VALUES (:fullName, :email, CAST(:flag AS user_flag)) ")
+    public abstract int[] insertAll(@BindBean List<User> users);
+
     @SqlUpdate("INSERT INTO users (id, full_name, email, flag) VALUES (:id, :fullName, :email, CAST(:flag AS user_flag)) ")
     abstract void insertWitId(@BindBean User user);
 
