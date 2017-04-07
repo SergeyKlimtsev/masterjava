@@ -6,6 +6,8 @@ package ru.javaops.masterjava.persist.dao;
  * <p>
  * <p>
  */
-public interface AbstractDao {
+public interface AbstractDao<T> {
     void clean();
+
+    T insert(T o);
 }

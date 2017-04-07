@@ -7,6 +7,8 @@ import ru.javaops.masterjava.persist.model.UserFlag;
 
 import java.util.List;
 
+import static ru.javaops.masterjava.persist.CitiesTestData.*;
+
 /**
  * gkislin
  * 14.11.2016
@@ -21,12 +23,12 @@ public class UserTestData {
     public static List<User> FIST5_USERS;
 
     public static void init() {
-        ADMIN = new User("Admin", "admin@javaops.ru", UserFlag.superuser);
-        DELETED = new User("Deleted", "deleted@yandex.ru", UserFlag.deleted);
-        FULL_NAME = new User("Full Name", "gmail@gmail.com", UserFlag.active);
-        USER1 = new User("User1", "user1@gmail.com", UserFlag.active);
-        USER2 = new User("User2", "user2@yandex.ru", UserFlag.active);
-        USER3 = new User("User3", "user3@yandex.ru", UserFlag.active);
+        ADMIN = new User("Admin", "admin@javaops.ru", UserFlag.superuser, SPB);
+        DELETED = new User("Deleted", "deleted@yandex.ru", UserFlag.deleted, SPB);
+        FULL_NAME = new User("Full Name", "gmail@gmail.com", UserFlag.active, KIV);
+        USER1 = new User("User1", "user1@gmail.com", UserFlag.active, MOW);
+        USER2 = new User("User2", "user2@yandex.ru", UserFlag.active, KIV);
+        USER3 = new User("User3", "user3@yandex.ru", UserFlag.active, MNSK);
         FIST5_USERS = ImmutableList.of(ADMIN, DELETED, FULL_NAME, USER1, USER2);
     }
 

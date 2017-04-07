@@ -3,18 +3,43 @@ package ru.javaops.masterjava.persist.model;
 import com.bertoncelj.jdbi.entitymapper.Column;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @RequiredArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class User extends BaseEntity {
-    @Column("full_name")
-    private @NonNull String fullName;
-    private @NonNull String email;
-    private @NonNull UserFlag flag;
 
-    public User(Integer id, String fullName, String email, UserFlag flag) {
-        this(fullName, email, flag);
-        this.id=id;
+    @Column("full_name")
+    private
+    @NonNull
+    String fullName;
+    private
+    @NonNull
+    String email;
+    private
+    @NonNull
+    UserFlag flag;
+    private
+    @NonNull
+    City city;
+
+    private
+    @NonNull
+    List<Group> groups;
+
+    public User(Integer id, String fullName, String email, UserFlag flag, City city, List<Group> groups) {
+        this(fullName, email, flag, city, groups);
+        this.id = id;
+
+    }
+
+    public User(String fullName, String email, UserFlag flag, City city) {
+        this.fullName = fullName;
+        this.email = email;
+        this.flag = flag;
+        this.city = city;
+
     }
 }
