@@ -1,13 +1,15 @@
 package ru.javaops.masterjava.export;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import one.util.streamex.StreamEx;
 import ru.javaops.masterjava.export.PayloadImporter.FailedEmail;
 import ru.javaops.masterjava.persist.DBIProvider;
 import ru.javaops.masterjava.persist.dao.UserDao;
-import ru.javaops.masterjava.persist.model.City;
-import ru.javaops.masterjava.persist.model.User;
-import ru.javaops.masterjava.persist.model.UserFlag;
+import ru.javaops.masterjava.persist.dao.UserGroupDao;
+import ru.javaops.masterjava.persist.model.*;
 import ru.javaops.masterjava.xml.util.StaxStreamProcessor;
 
 import javax.xml.stream.XMLStreamException;
@@ -30,9 +32,10 @@ public class UserImporter {
     private static final int NUMBER_THREADS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_THREADS);
     private final UserDao userDao = DBIProvider.getDao(UserDao.class);
+    private final UserGroupDao userGroupDao = DBIProvider.getDao(UserGroupDao.class);
 
-    public List<FailedEmail> process(StaxStreamProcessor processor, Map<String, City> cities, int chunkSize) throws XMLStreamException {
-        log.info("Start proseccing with chunkSize=" + chunkSize);
+    public List<FailedEmail> process(StaxStreamProcessor processor, Map<String, City> cities, Map<String, Group> groups, int chunkSize) throws XMLStreamException {
+        log.info("Start processing with chunkSize=" + chunkSize);
 
         return new Callable<List<FailedEmail>>() {
             class ChunkFuture {
@@ -54,21 +57,29 @@ public class UserImporter {
 
                 int id = userDao.getSeqAndSkip(chunkSize);
                 List<User> chunk = new ArrayList<>(chunkSize);
+                List<UserGroup> userGroupsChunk = new ArrayList<>();
                 List<FailedEmail> failed = new ArrayList<>();
 
                 while (processor.doUntil(XMLEvent.START_ELEMENT, "User")) {
                     final String email = processor.getAttribute("email");
                     String cityRef = processor.getAttribute("city");
                     City city = cities.get(cityRef);
+                    String groupRefs = processor.getAttribute("groupRefs");
+                    List<UserGroup> userGroups = getUserGroup(groupRefs, groups, id);
                     if (city == null) {
                         failed.add(new FailedEmail(email, "City '" + cityRef + "' is not present in DB"));
+                    } else if (userGroups == null || userGroups.isEmpty()) {
+                        failed.add(new FailedEmail(email, "Groups '" + groupRefs + "' is not present in DB"));
                     } else {
                         final UserFlag flag = UserFlag.valueOf(processor.getAttribute("flag"));
                         final String fullName = processor.getReader().getElementText();
-                        final User user = new User(id++, fullName, email, flag, city.getId());
+
+                        val user = new User(id++, fullName, email, flag, city.getId());
+                        userGroupsChunk.addAll(userGroups);
                         chunk.add(user);
                         if (chunk.size() == chunkSize) {
-                            futures.add(submit(chunk));
+                            futures.add(submit(chunk, userGroupsChunk));
+                            userGroupsChunk = new ArrayList<>();
                             chunk = new ArrayList<>(chunkSize);
                             id = userDao.getSeqAndSkip(chunkSize);
                         }
@@ -76,7 +87,7 @@ public class UserImporter {
                 }
 
                 if (!chunk.isEmpty()) {
-                    futures.add(submit(chunk));
+                    futures.add(submit(chunk, userGroupsChunk));
                 }
 
                 futures.forEach(cf -> {
@@ -91,13 +102,35 @@ public class UserImporter {
                 return failed;
             }
 
-            private ChunkFuture submit(List<User> chunk) {
+            private ChunkFuture submit(List<User> chunk, List<UserGroup> userGroupsChunk) {
                 ChunkFuture chunkFuture = new ChunkFuture(chunk,
-                        executorService.submit(() -> userDao.insertAndGetConflictEmails(chunk))
+                        executorService.submit(() -> {
+                            List<String> conflictEmails = userDao.insertAndGetConflictEmails(chunk);
+                            userGroupDao.insertBatch(userGroupsChunk);
+                            return conflictEmails;
+                        })
+
                 );
                 log.info("Submit " + chunkFuture.emailRange);
                 return chunkFuture;
             }
         }.call();
+    }
+
+    private List<UserGroup> getUserGroup(String groupRefs, Map<String, Group> groupMap, Integer userId) {
+        Preconditions.checkNotNull(groupMap);
+        if (groupRefs == null || groupRefs.isEmpty()) {
+            return null;
+        }
+        val userGroups = new ArrayList<UserGroup>();
+        val groupNames = Splitter.on(' ').split(groupRefs);
+        for (String groupName : groupNames) {
+            Group group = groupMap.get(groupName);
+            if (group == null) {
+                return null;
+            }
+            userGroups.add(new UserGroup(userId, group.getId()));
+        }
+        return userGroups;
     }
 }
