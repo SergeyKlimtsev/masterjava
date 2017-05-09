@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import ru.javaops.web.WebStateException;
 import ru.javaops.web.WsClient;
 
+import javax.activation.DataHandler;
 import javax.xml.namespace.QName;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -24,11 +26,12 @@ public class MailWSClient {
     }
 
 
-    public static String sendToGroup(final Set<Addressee> to, final Set<Addressee> cc, final String subject, final String body) throws WebStateException {
+    public static String sendToGroup(final Set<Addressee> to, final Set<Addressee> cc, final String subject, final String body, final List<Attachment> attachment) throws WebStateException {
         log.info("Send mail to '" + to + "' cc '" + cc + "' subject '" + subject + (log.isDebugEnabled() ? "\nbody=" + body : ""));
         String status;
         try {
-            status = WS_CLIENT.getPort().sendToGroup(to, cc, subject, body);
+
+            status = WS_CLIENT.getPort().sendToGroup(to, cc, subject, body, attachment);
             log.info("Sent with status: " + status);
         } catch (Exception e) {
             log.error("sendToGroup failed", e);
@@ -37,11 +40,11 @@ public class MailWSClient {
         return status;
     }
 
-    public static GroupResult sendBulk(final Set<Addressee> to, final String subject, final String body) throws WebStateException {
+    public static GroupResult sendBulk(final Set<Addressee> to, final String subject, final String body, final List<Attachment> attachment) throws WebStateException {
         log.info("Send mail to '" + to + "' subject '" + subject + (log.isDebugEnabled() ? "\nbody=" + body : ""));
         GroupResult result;
         try {
-            result = WS_CLIENT.getPort().sendBulk(to, subject, body);
+            result = WS_CLIENT.getPort().sendBulk(to, subject, body, attachment);
         } catch (WebStateException e) {
             log.error("sendBulk failed", e);
             throw WsClient.getWebStateException(e);

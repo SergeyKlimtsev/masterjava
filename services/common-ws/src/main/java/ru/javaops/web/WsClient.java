@@ -1,5 +1,7 @@
 package ru.javaops.web;
 
+
+import com.sun.xml.ws.developer.JAXWSProperties;
 import com.typesafe.config.Config;
 import ru.javaops.masterjava.ExceptionType;
 import ru.javaops.masterjava.config.Configs;
@@ -7,6 +9,7 @@ import ru.javaops.masterjava.config.Configs;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.Service;
+import javax.xml.ws.soap.MTOMFeature;
 import java.net.URL;
 import java.util.Map;
 
