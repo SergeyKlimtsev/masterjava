@@ -8,7 +8,9 @@ import com.sun.xml.ws.api.streaming.XMLStreamWriterFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.event.Level;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.ws.handler.MessageContext;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
@@ -35,7 +37,7 @@ public abstract class SoapLoggingHandler extends SoapBaseHandler {
 
     private static final Map<Level, HANDLER> HANDLER_MAP = new EnumMap<Level, HANDLER>(Level.class) {
         {
-            put(Level.TRACE, HANDLER.DEBUG);
+            put(Level.TRACE, HANDLER.STATS);
             put(Level.DEBUG, HANDLER.DEBUG);
             put(Level.INFO, HANDLER.INFO);
             put(Level.WARN, HANDLER.ERROR);
@@ -56,31 +58,52 @@ public abstract class SoapLoggingHandler extends SoapBaseHandler {
         ERROR {
             private static final String REQUEST_MSG = "REQUEST_MSG";
 
+            @Override
             public void handleFault(MessageHandlerContext context) {
                 log.error("Fault SOAP request:\n" + getMessageText(((Message) context.get(REQUEST_MSG))));
             }
 
+            @Override
             public void handleMessage(MessageHandlerContext context, boolean isRequest) {
                 if (isRequest) {
                     context.put(REQUEST_MSG, context.getMessage().copy());
                 }
             }
         },
+        STATS {
+            @Override
+            public void handleMessage(MessageHandlerContext mhc, boolean isRequest) {
+                if (isRequest) {
+                    HttpServletRequest request = (HttpServletRequest) mhc.get(MessageContext.SERVLET_REQUEST);
+                    String interfaceName = mhc.get(MessageContext.WSDL_OPERATION).toString();
+                    log.info("Request from " + "IP: " + request.getRemoteAddr() + ", Port: " + request.getRemotePort() + ", Host: " + request.getRemoteHost() + " Interface: " + interfaceName);
+                }
+            }
+
+            @Override
+            public void handleFault(MessageHandlerContext mhc) {
+
+            }
+        },
         INFO {
+            @Override
             public void handleFault(MessageHandlerContext context) {
                 ERROR.handleFault(context);
             }
 
+            @Override
             public void handleMessage(MessageHandlerContext context, boolean isRequest) {
                 ERROR.handleMessage(context, isRequest);
                 log.info((isRequest ? "SOAP request: " : "SOAP response: ") + context.getMessage().getPayloadLocalPart());
             }
         },
         DEBUG {
+            @Override
             public void handleFault(MessageHandlerContext context) {
                 log.error("Fault SOAP message:\n" + getMessageText(context.getMessage().copy()));
             }
 
+            @Override
             public void handleMessage(MessageHandlerContext context, boolean isRequest) {
                 log.info((isRequest ? "SOAP request:\n" : "SOAP response:\n") + getMessageText(context.getMessage().copy()));
             }
