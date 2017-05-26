@@ -1,12 +1,17 @@
 package ru.javaops.masterjava.service.mail.jms;
 
 import lombok.extern.slf4j.Slf4j;
+import one.util.streamex.StreamEx;
+import org.apache.activemq.ActiveMQConnectionFactory;
+import ru.javaops.masterjava.service.mail.*;
+import ru.javaops.masterjava.service.mail.util.Attachments;
 
 import javax.jms.*;
 import javax.naming.InitialContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
+import java.util.List;
 
 @WebListener
 @Slf4j
@@ -21,6 +26,7 @@ public class JmsListener implements ServletContextListener {
             QueueConnectionFactory connectionFactory =
                     (QueueConnectionFactory) initCtx.lookup("java:comp/env/jms/ConnectionFactory");
             connection = connectionFactory.createQueueConnection();
+
             QueueSession queueSession = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
             Queue queue = (Queue) initCtx.lookup("java:comp/env/jms/queue/MailQueue");
             QueueReceiver receiver = queueSession.createReceiver(queue);
@@ -31,10 +37,14 @@ public class JmsListener implements ServletContextListener {
                     while (!Thread.interrupted()) {
                         Message m = receiver.receive();
                         // TODO implement mail sending
-                        if (m instanceof TextMessage) {
-                            TextMessage tm = (TextMessage) m;
-                            String text = tm.getText();
-                            log.info(String.format("Received TextMessage with text '%s'.", text));
+                        if (m instanceof ObjectMessage) {
+                            ObjectMessage objectMessage = (ObjectMessage) m;
+                            JmsMail jmsMail = (JmsMail) objectMessage.getObject();
+                            List<Attach> attaches= StreamEx.of(jmsMail.getAttaches())
+                                    .map(Attachments::toPlainAttach)
+                                    .toList();
+                            GroupResult groupResult = MailServiceExecutor.sendBulk(jmsMail.getTo(), jmsMail.getSubject(), jmsMail.getBody(), attaches);
+                            log.info(String.format("Received TextMessage with text '%s'.", jmsMail.getBody()));
                         }
                     }
                 } catch (Exception e) {
